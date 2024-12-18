@@ -18,6 +18,12 @@ import { Input } from "@/components/ui/input"; // Gerekli dosya yolunu belirtin
 import { Button } from "@/components/ui/button"; // Gerekli dosya yolunu belirtin
 import { Label } from "@/components/ui/label";
 import Link from "next/link";
+import useAuthStore from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+import { startSession } from "@/lib/sessions";
+import loginUser from "@/actions/login";
+import { Loader2Icon } from "lucide-react";
 
 const formSchema = z.object({
     email: z
@@ -34,6 +40,12 @@ const formSchema = z.object({
 });
 
 const LoginPage = () => {
+
+    
+    const {loader,setLoader}=useAuthStore();
+    const {toast}=useToast();
+    const router=useRouter();
+
     const form = useForm<z.infer<typeof formSchema>>({
         resolver: zodResolver(formSchema),
         defaultValues: {
@@ -41,10 +53,31 @@ const LoginPage = () => {
             password: "",
         },
     });
-
     const onSubmit = (data: z.infer<typeof formSchema>) => {
-        console.log("Form Data:", data);
+        setLoader(true);
+    
+        loginUser( data.email, data.password).then(
+            (resp) => {
+                startSession(resp.user, resp.jwt);
+                toast({
+                    variant: "success",
+                    title: "Account Created",
+                });
+                setLoader(false);
+                router.push("/");
+            },
+            () => {
+                setLoader(false);
+                toast({
+                    variant: "destructive",
+                    title: "Something went wrong",
+                });
+            }
+        ).finally(() => {
+            setLoader(false);
+        });
     };
+
 
     return (
         <Form {...form}>
@@ -81,7 +114,10 @@ const LoginPage = () => {
                         </FormItem>
                     )}
                 />
-                <Button className='w-full' type="submit">Submit</Button>
+                <Button className='w-full' type="submit">
+                {loader?<Loader2Icon className='animate-spin' /> :"Login"}
+
+                </Button>
             </form>
             <div className='mt-8'>
                 <Label className='flex flex-col items-center'>
